@@ -57,7 +57,7 @@ public class HBaseConnectorFactory implements ConnectorFactory {
                     new HBaseModule(connectorId, context.getTypeManager()));
 
 
-            Injector injector = e.strictConfig()
+            Injector injector = e
                     .doNotInitializeLogging()
                     .setRequiredConfigurationProperties(requiredConfig)
                     .initialize();

@@ -19,6 +19,7 @@ import com.analysys.trino.connector.hbase.utils.Constant;
 import com.analysys.trino.connector.hbase.utils.Utils;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.inject.Inject;
 import io.airlift.log.Logger;
 import io.airlift.slice.Slice;
 import io.trino.spi.connector.*;
@@ -31,7 +32,7 @@ import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.SnapshotDescription;
 import org.apache.hadoop.hbase.client.SnapshotType;
 
-import javax.inject.Inject;
+
 import java.io.IOException;
 import java.util.*;
 

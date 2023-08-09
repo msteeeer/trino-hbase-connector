@@ -15,12 +15,13 @@ package com.analysys.trino.connector.hbase.frame;
 
 import com.analysys.trino.connector.hbase.meta.HBaseMetadata;
 import com.analysys.trino.connector.hbase.schedule.HBaseSplitManager;
+import com.google.inject.Inject;
 import io.airlift.bootstrap.LifeCycleManager;
 import io.airlift.log.Logger;
 import io.trino.spi.connector.*;
 import io.trino.spi.transaction.IsolationLevel;
 
-import javax.inject.Inject;
+
 
 import static java.util.Objects.requireNonNull;
 

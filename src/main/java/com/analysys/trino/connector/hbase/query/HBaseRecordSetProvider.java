@@ -20,9 +20,10 @@ import com.analysys.trino.connector.hbase.schedule.HBaseSplit;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
+import com.google.inject.Inject;
 import io.trino.spi.connector.*;
 
-import javax.inject.Inject;
+
 import java.util.List;
 import java.util.Objects;
 

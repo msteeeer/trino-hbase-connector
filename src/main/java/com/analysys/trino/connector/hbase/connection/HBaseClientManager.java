@@ -15,6 +15,9 @@ package com.analysys.trino.connector.hbase.connection;
 
 import com.analysys.trino.connector.hbase.meta.HBaseConfig;
 import com.analysys.trino.connector.hbase.meta.HBaseTable;
+
+
+
 import io.airlift.log.Logger;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -24,7 +27,8 @@ import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.TableDescriptor;
 
-import javax.inject.Inject;
+
+import com.google.inject.Inject;
 import java.io.IOException;
 import java.util.Objects;
 

@@ -15,10 +15,11 @@ package com.analysys.trino.connector.hbase.query;
 
 import com.analysys.trino.connector.hbase.connection.HBaseClientManager;
 import com.analysys.trino.connector.hbase.meta.HBaseInsertTableHandle;
+import com.google.inject.Inject;
 import io.trino.spi.TrinoException;
 import io.trino.spi.connector.*;
 
-import javax.inject.Inject;
+
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static io.trino.spi.StandardErrorCode.NOT_SUPPORTED;

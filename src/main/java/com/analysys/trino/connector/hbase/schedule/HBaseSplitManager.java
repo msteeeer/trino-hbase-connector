@@ -21,6 +21,7 @@ import com.analysys.trino.connector.hbase.utils.TimeTicker;
 import com.analysys.trino.connector.hbase.utils.Utils;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.inject.Inject;
 import io.airlift.log.Logger;
 import io.airlift.slice.Slice;
 import io.trino.spi.HostAddress;
@@ -32,7 +33,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.RegionInfo;
 
-import javax.inject.Inject;
+
 import java.util.*;
 import java.util.stream.Collectors;
 

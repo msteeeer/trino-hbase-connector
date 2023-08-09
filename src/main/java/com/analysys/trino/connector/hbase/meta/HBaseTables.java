@@ -15,6 +15,7 @@ package com.analysys.trino.connector.hbase.meta;
 
 import com.analysys.trino.connector.hbase.connection.HBaseClientManager;
 import com.google.common.collect.ImmutableMap;
+
 import io.airlift.log.Logger;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.predicate.TupleDomain;
@@ -23,7 +24,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.TableDescriptor;
 
-import javax.inject.Inject;
+import com.google.inject.Inject;
 import java.io.IOException;
 import java.util.*;
 

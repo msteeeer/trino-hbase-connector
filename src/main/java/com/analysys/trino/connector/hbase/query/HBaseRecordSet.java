@@ -267,7 +267,7 @@ public class HBaseRecordSet implements RecordSet {
         columnHandles.forEach(hch -> fieldIndexMap.put(hch.getColumnName().hashCode(), hch));
     }
 
-    HBaseSplit getHBaseSplit() {
+    public HBaseSplit getHBaseSplit() {
         return hBaseSplit;
     }
 }

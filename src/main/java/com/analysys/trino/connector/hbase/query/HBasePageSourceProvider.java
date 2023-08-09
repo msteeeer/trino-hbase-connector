@@ -16,10 +16,12 @@
  */
 package com.analysys.trino.connector.hbase.query;
 
+import com.analysys.trino.connector.hbase.api.HBaseUpdatablePageSource;
 import com.analysys.trino.connector.hbase.connection.HBaseClientManager;
+import com.analysys.trino.connector.hbase.meta.HBaseColumnHandle;
+import com.google.inject.Inject;
 import io.trino.spi.connector.*;
 
-import javax.inject.Inject;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
@@ -48,20 +50,14 @@ public class HBasePageSourceProvider implements ConnectorPageSourceProvider {
                                                 ConnectorTableHandle table,
                                                 List<ColumnHandle> columns,
                                                 DynamicFilter dynamicFilter) {
-        return null;
+
+        HBaseRecordSet recordSet = (HBaseRecordSet) recordSetProvider.getRecordSet(transaction, session, split, table, columns);
+        if (columns.stream().anyMatch(ch -> ((HBaseColumnHandle) ch).isRowKey())) {
+            return new HBaseUpdatablePageSource(recordSet, hbaseClientManager);
+        } else {
+            return new RecordPageSource(recordSet);
+        }
     }
 
-//    @Override
-//    public ConnectorPageSource createPageSource(ConnectorTransactionHandle transactionHandle,
-//                                                ConnectorSession session,
-//                                                ConnectorSplit split,
-//                                                ConnectorTableHandle table,
-//                                                List<ColumnHandle> columns) {
-//        HBaseRecordSet recordSet = (HBaseRecordSet) recordSetProvider.getRecordSet(transactionHandle, session, split, table, columns);
-//        if (columns.stream().anyMatch(ch -> ((HBaseColumnHandle) ch).isRowKey())) {
-//            return new HBaseUpdatablePageSource(recordSet, hbaseClientManager);
-//        } else {
-//            return new RecordPageSource(recordSet);
-//        }
 
 }

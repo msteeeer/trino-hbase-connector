@@ -38,6 +38,8 @@ import org.codehaus.jettison.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 
 /**
@@ -188,6 +190,7 @@ public class Utils {
      * @return true if this sql is batch get.
      */
     public static boolean isBatchGet(List<ConditionInfo> conditions, String rowKeyColName) {
+
         if (conditions != null) {
             for (ConditionInfo cond : conditions) {
                 if (rowKeyColName.equals(cond.getColName())
@@ -291,6 +294,14 @@ public class Utils {
 
     public static boolean isEmpty(String str) {
         return str == null || "".equals(str);
+    }
+
+    public static String base(String base64Str) {
+        // 解码
+        byte [] base64Data = Base64.getDecoder().decode(base64Str);
+        // byte[]-->String（解码后的字符串）
+        String str = new String(base64Data, StandardCharsets.UTF_8);
+        return str;
     }
 
 }

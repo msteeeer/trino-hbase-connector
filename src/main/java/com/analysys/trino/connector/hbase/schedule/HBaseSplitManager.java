@@ -63,47 +63,6 @@ public class HBaseSplitManager implements ConnectorSplitManager {
         log.info("\nPresto HBase Connector Config：" + this.config.toString());
     }
 
-    @Override
-    public ConnectorSplitSource getSplits(ConnectorTransactionHandle transaction, ConnectorSession session, ConnectorTableHandle connectorTableHandle, DynamicFilter dynamicFilter, Constraint constraint1) {
-        HBaseTableHandle tableHandle = (HBaseTableHandle) connectorTableHandle;
-
-        String schemaName = tableHandle.getSchemaTableName().getSchemaName();
-        String tableName = tableHandle.getSchemaTableName().getTableName();
-        HBaseTable table = this.clientManager.getTable(schemaName, tableName);
-        Preconditions.checkState(table != null, "Table %s.%s no longer exists", schemaName, tableName);
-
-        TupleDomain<ColumnHandle> constraint = tableHandle.getConstraint();
-
-        TableMetaInfo tableMetaInfo = Utils.getTableMetaInfoFromJson(schemaName, tableName, config.getMetaDir());
-        Preconditions.checkState(tableMetaInfo != null,
-                String.format("The meta info of table %s.%s doesn't exists! Table meta dir is %s.",
-                        schemaName, tableName, config.getMetaDir()));
-
-        List<HBaseSplit> splits;
-        List<ConditionInfo> conditions = findConditionFromConstraint(constraint);
-        // batch get
-        if (Utils.isBatchGet(conditions, tableMetaInfo.getRowKeyColName())) {
-            splits = getSplitsForBatchGet(conditions, tableMetaInfo, tableHandle);
-            Collections.shuffle(splits);
-            return new FixedSplitSource(splits);
-        }
-        // client side scan
-        else if (isClientSideRegionScanTable(schemaName, tableName, config.getClientSideQueryModeTableNames())) {
-            splits = getSplitsForClientSide(schemaName, tableName, conditions, tableMetaInfo.getRowKeyColName());
-        }
-        // normal scan
-        else {
-            splits = getSplitsForScan(conditions, tableMetaInfo);
-        }
-
-        log.info("The final split count is " + splits.size() + ".");
-        splits.forEach(split -> log.info("print split info：" + split.toString()));
-
-        Collections.shuffle(splits);
-        return new FixedSplitSource(splits);
-    }
-
-
 //    @Override
 //    public ConnectorSplitSource getSplits(
 //            ConnectorTransactionHandle transaction,
@@ -147,6 +106,56 @@ public class HBaseSplitManager implements ConnectorSplitManager {
 //        Collections.shuffle(splits);
 //        return new FixedSplitSource(splits);
 //    }
+
+
+    @Override
+    public ConnectorSplitSource getSplits(
+            ConnectorTransactionHandle transaction,
+            ConnectorSession session,
+            ConnectorTableHandle connectorTableHandle,
+            DynamicFilter dynamicFilter, Constraint constraint1) {
+
+        HBaseTableHandle tableHandle = (HBaseTableHandle) connectorTableHandle;
+
+        String schemaName = tableHandle.getSchemaTableName().getSchemaName();
+        String tableName = tableHandle.getSchemaTableName().getTableName();
+        HBaseTable table = this.clientManager.getTable(schemaName, tableName);
+        Preconditions.checkState(table != null, "Table %s.%s no longer exists", schemaName, tableName);
+
+        TupleDomain<ColumnHandle> constraint = tableHandle.getConstraint();
+
+        TableMetaInfo tableMetaInfo = Utils.getTableMetaInfoFromJson(schemaName, tableName, config.getMetaDir());
+        Preconditions.checkState(tableMetaInfo != null,
+                String.format("The meta info of table %s.%s doesn't exists! Table meta dir is %s.",
+                        schemaName, tableName, config.getMetaDir()));
+
+        List<HBaseSplit> splits;
+        List<ConditionInfo> conditions = findConditionFromConstraint(constraint);
+
+        // batch get
+    if (Utils.isBatchGet(conditions, tableMetaInfo.getRowKeyColName())) {
+
+
+            splits = getSplitsForBatchGet(conditions, tableMetaInfo, tableHandle);
+            Collections.shuffle(splits);
+            return new FixedSplitSource(splits);
+        }
+        // client side scan
+        else if (isClientSideRegionScanTable(schemaName, tableName, config.getClientSideQueryModeTableNames())) {
+
+            splits = getSplitsForClientSide(schemaName, tableName, conditions, tableMetaInfo.getRowKeyColName());
+        }
+        // normal scan
+        else {
+            splits = getSplitsForScan(conditions, tableMetaInfo);
+        }
+
+        log.info("The final split count is " + splits.size() + ".");
+        splits.forEach(split -> log.info("print split info：" + split.toString()));
+
+        Collections.shuffle(splits);
+        return new FixedSplitSource(splits);
+    }
 
     /**
      * get splits for client side query mode

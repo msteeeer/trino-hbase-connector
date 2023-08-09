@@ -36,6 +36,7 @@ import org.apache.hadoop.hbase.snapshot.SnapshotManifest;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hdfs.protocol.AlreadyBeingCreatedException;
 
+import java.security.Key;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -82,6 +83,7 @@ public class HBaseRecordSet implements RecordSet {
 
     @Override
     public RecordCursor cursor() {
+        log.info("----------->进入cursor（）方法");
         try (Table table = connection
                 .getTable(TableName.valueOf(
                         hBaseSplit.getSchemaName() + ":" + hBaseSplit.getTableName()))) {
@@ -165,7 +167,11 @@ public class HBaseRecordSet implements RecordSet {
     }
 
     private Filter getFilter(ConditionInfo condition) {
+
         CompareFilter.CompareOp operator;
+
+        condition.setValue(Utils.base(String.valueOf(condition.getValue())));
+    log.info("进入了getFilter 方法{"+condition.toString()+"}");
         switch (condition.getOperator()) {
             case GT:
                 operator = CompareFilter.CompareOp.GREATER;
@@ -210,6 +216,7 @@ public class HBaseRecordSet implements RecordSet {
         // Filter the exactly columns we want
         // for (HBaseColumnHandle hch : this.columnHandles) {
         this.columnHandles.forEach(hch -> {
+            log.info("hch---------->{"+hch.toString()+"}");
             if (this.hBaseSplit.getRowKeyName() == null) {
                 scan.addColumn(
                         Bytes.toBytes(hch.getFamily()), Bytes.toBytes(hch.getColumnName()));
@@ -234,6 +241,9 @@ public class HBaseRecordSet implements RecordSet {
         } else {
             Map<String, List<ConditionInfo>> conditions = hBaseSplit.getConstraint().stream()
                     .collect(Collectors.groupingBy(ConditionInfo::getColName));
+            log.info("conditions----------》{"+conditions.toString()+"}");
+
+
             // Here is what kind of condition presto can give to us:
             // 1.There can only be an 'and' relationship between different columns
             // 2.The same column can only be an 'or' relationship

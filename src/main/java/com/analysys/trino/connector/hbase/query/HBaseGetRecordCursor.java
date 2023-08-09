@@ -15,6 +15,7 @@ package com.analysys.trino.connector.hbase.query;
 
 import com.analysys.trino.connector.hbase.meta.HBaseColumnHandle;
 import com.analysys.trino.connector.hbase.schedule.HBaseSplit;
+import com.analysys.trino.connector.hbase.utils.Utils;
 import com.google.common.base.Preconditions;
 import io.airlift.log.Logger;
 import io.trino.spi.connector.ColumnHandle;
@@ -55,6 +56,9 @@ public class HBaseGetRecordCursor extends HBaseRecordCursor {
 
     HBaseGetRecordCursor(List<HBaseColumnHandle> columnHandles, HBaseSplit hBaseSplit,
                          Map<Integer, HBaseColumnHandle> fieldIndexMap, Connection connection) {
+        log.info("----------------->进入HBaseGetRecordCursor（）方法");
+        log.info("hBaseSplit 参数------------->{"+hBaseSplit.toString()+"}");
+
         startTime = System.currentTimeMillis();
         this.columnHandles = columnHandles;
         this.fieldIndexMap = fieldIndexMap;
@@ -66,8 +70,14 @@ public class HBaseGetRecordCursor extends HBaseRecordCursor {
         this.connection = connection;
         try (Table table = connection.getTable(
                 TableName.valueOf(hBaseSplit.getSchemaName() + ":" + hBaseSplit.getTableName()))) {
+
+
             List<String> rowKeys = hBaseSplit.getConstraint().stream()
                     .map(cond -> (String) cond.getValue()).collect(Collectors.toList());
+            log.info("rowKeys-----{"+rowKeys.toString()+"}");
+            rowKeys.forEach(key->{
+                log.info("rowKey-----{"+key+"}");
+            });
             this.results = getResults(rowKeys, table);
         } catch (Exception e) {
             log.error(e, e.getMessage());
@@ -77,7 +87,12 @@ public class HBaseGetRecordCursor extends HBaseRecordCursor {
     }
 
     private Result[] getResults(List<String> rowKeys, Table table) {
+        log.info("进入 getResults方法------");
         List<Get> gets = rowKeys.stream().map(rowKey -> {
+            log.info("解码前------》{"+rowKey+"}");
+             rowKey = Utils.base(rowKey);
+            log.info("解码后------》{"+rowKey+"}");
+
                     Get get = new Get(Bytes.toBytes(rowKey));
                     for (ColumnHandle ch : columnHandles) {
                         HBaseColumnHandle hch = (HBaseColumnHandle) ch;

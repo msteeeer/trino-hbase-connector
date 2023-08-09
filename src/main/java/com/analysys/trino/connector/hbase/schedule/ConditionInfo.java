@@ -34,7 +34,7 @@ import static io.trino.spi.type.IntegerType.INTEGER;
 public class ConditionInfo {
     public static final Logger log = Logger.get(ConditionInfo.class);
     private final String colName;
-    private final Object value;
+    private  Object value;
     private final Constant.CONDITION_OPER operator;
     private final Type type;
 
@@ -167,5 +167,9 @@ public class ConditionInfo {
                 ", operator=" + operator +
                 ", type=" + type +
                 '}';
+    }
+
+    public void setValue(Object value) {
+        this.value = value;
     }
 }

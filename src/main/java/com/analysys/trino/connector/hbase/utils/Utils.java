@@ -41,6 +41,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * utils
@@ -62,9 +63,11 @@ public class Utils {
      */
     private static String readTableJson(String schemaName, String tableName, String metaDir) {
         try {
+
             String tableMetaPath = metaDir + File.separator
                     + (schemaName == null || "".equals(schemaName) ? Constant.DEFAULT_HBASE_NAMESPACE_NAME : schemaName)
                     + File.separator + tableName + Constant.TABLE_META_FILE_TAIL;
+           logger.info("tableMetaPath-------->{"+tableMetaPath.toString()+"}");
             return FileUtils.readFileToString(new File(tableMetaPath), Constant.JSON_ENCODING_UTF8);
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
@@ -86,6 +89,7 @@ public class Utils {
         try {
             ObjectMapper mapper = new ObjectMapper();
             String jsonString = readTableJson(schemaName, tableName, metaDir);
+            logger.info("jsonString------>{"+jsonString+"}");
             return mapper.readValue(jsonString, TableMetaInfo.class);
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
@@ -109,15 +113,23 @@ public class Utils {
         ImmutableList.Builder<ColumnMetadata> columnsMetadata = ImmutableList.builder();
         try {
             String jsonStr = readTableJson(schemaName, tableName, metaDir);
+
+            logger.info("getColumnMetaFromJson-jsonStr----------->{"+jsonStr.toString()+"}");
             JSONObject obj = new JSONObject(jsonStr);
             JSONArray cols = obj.getJSONArray(Constant.JSON_TABLEMETA_COLUMNES);
+            logger.info("JSONArray--cols-------------{"+cols.toString()+"}");
             boolean hasRowKey = false;
             for (int i = 0; i < cols.length(); i++) {
                 JSONObject temp = new JSONObject(cols.getString(i));
+                logger.info("temp----------->{"+temp.toString()+"}");
                 String family = temp.getString(Constant.JSON_TABLEMETA_FAMILY);
+                logger.info("family----------->{"+family.toString()+"}");
                 String columnName = temp.getString(Constant.JSON_TABLEMETA_COLUMNNAME);
                 String type = temp.getString(Constant.JSON_TABLEMETA_TYPE);
+
+                logger.info("temp----------->{"+type.toString()+"}");
                 boolean isRowKey = temp.getBoolean(Constant.JSON_TABLEMETA_ISROWKEY);
+
                 columnsMetadata.add(new HBaseColumnMetadata(family, columnName, matchType(type), isRowKey));
                 if (isRowKey) {
                     hasRowKey = true;
@@ -159,7 +171,7 @@ public class Utils {
         if (type == null) {
             return VarcharType.VARCHAR;
         }
-
+//        logger.info("数据类型  type-------------》{"+type.toString()+"}");
         switch (type.toLowerCase()) {
             /*case "string":
                 return VarcharType.VARCHAR;*/
@@ -296,13 +308,18 @@ public class Utils {
         return str == null || "".equals(str);
     }
 
-    public static String base(String base64Str) {
-        // 解码
-        byte [] base64Data = Base64.getDecoder().decode(base64Str);
-        // byte[]-->String（解码后的字符串）
-        String str = new String(base64Data, StandardCharsets.UTF_8);
+    public static String base(String str) {
+        String base64Pattern = "^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{4}|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)$";
+        if(Pattern.matches(base64Pattern, str)){
+            // 解码
+            byte [] base64Data = Base64.getDecoder().decode(str);
+            // byte[]-->String（解码后的字符串）
+             str = new String(base64Data, StandardCharsets.UTF_8);
+        }
+
         return str;
     }
+
 
 }
 

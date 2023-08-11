@@ -43,7 +43,13 @@ public class HBaseTable {
             String tableNameAsString = tabDesc.getTableName().getNameAsString();
             String tableName = tableNameAsString != null && tableNameAsString.contains(":") ?
                     tableNameAsString.split(":")[1] : tableNameAsString;
+
+            logger.info("读取数据文件-------------》{"+config.getMetaDir().toString()+"}");
+
             tableMeta = Utils.getColumnMetaFromJson(schemaName, tableName, config.getMetaDir());
+
+
+
             if (tableMeta == null || tableMeta.size() <= 0) {
                 logger.error("OOPS! Table meta info cannot be NULL, table name=" + tableNameAsString);
                 throw new Exception("Cannot find meta info of table " + tableNameAsString + ".");

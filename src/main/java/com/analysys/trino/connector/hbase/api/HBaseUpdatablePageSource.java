@@ -45,8 +45,11 @@ public class HBaseUpdatablePageSource implements UpdatablePageSource {
 
     public HBaseUpdatablePageSource(HBaseRecordSet recordSet, HBaseClientManager clientManager) {
         this.schemaName = recordSet.getHBaseSplit().getSchemaName();
+        log.info("HBaseUpdatablePageSource-----schemaName------->{"+schemaName.toString()+"}");
         this.tableName = recordSet.getHBaseSplit().getTableName();
+        log.info("HBaseUpdatablePageSource-----tableName------->{"+tableName.toString()+"}");
         this.inner = new RecordPageSource(recordSet);
+
         this.clientManager = clientManager;
     }
 

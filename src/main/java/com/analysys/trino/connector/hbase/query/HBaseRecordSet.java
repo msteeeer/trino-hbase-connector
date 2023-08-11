@@ -18,15 +18,17 @@ import com.analysys.trino.connector.hbase.meta.HBaseColumnHandle;
 import com.analysys.trino.connector.hbase.meta.HBaseConfig;
 import com.analysys.trino.connector.hbase.schedule.ConditionInfo;
 import com.analysys.trino.connector.hbase.schedule.HBaseSplit;
+import com.analysys.trino.connector.hbase.utils.Constant;
 import com.analysys.trino.connector.hbase.utils.Utils;
 import io.airlift.log.Logger;
 import io.trino.spi.connector.ColumnHandle;
 import io.trino.spi.connector.RecordCursor;
 import io.trino.spi.connector.RecordSet;
-import io.trino.spi.type.Type;
+import io.trino.spi.type.*;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.filter.*;
@@ -36,6 +38,7 @@ import org.apache.hadoop.hbase.snapshot.SnapshotManifest;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hdfs.protocol.AlreadyBeingCreatedException;
 
+import java.math.BigInteger;
 import java.security.Key;
 import java.util.HashMap;
 import java.util.List;
@@ -84,17 +87,26 @@ public class HBaseRecordSet implements RecordSet {
     @Override
     public RecordCursor cursor() {
         log.info("----------->进入cursor（）方法");
-        try (Table table = connection
+        try (
+                Table table = connection
                 .getTable(TableName.valueOf(
                         hBaseSplit.getSchemaName() + ":" + hBaseSplit.getTableName()))) {
+            log.info("this.hBaseSplit.getRegionInfo()-------->{"+this.hBaseSplit.toString()+"}");
+
+            //eq 走这里
             // Check out if this is batch get
             if (Utils.isBatchGet(this.hBaseSplit.getConstraint(), hBaseSplit.getRowKeyName())) {
+//                log.info("this.hBaseSplit.getConstraint()------>{"+this.hBaseSplit.getConstraint().toString()+"}");
+//                log.info("hBaseSplit.getRowKeyName()------>{"+hBaseSplit.getRowKeyName()+"}");
+
                 return new HBaseGetRecordCursor(this.columnHandles,
                         this.hBaseSplit, this.fieldIndexMap, this.connection);
             }
+
             // client side region scanner
             else if (this.hBaseSplit.getRegionInfo() != null) {
                 Scan scan = getScanFromPrestoConstraint();
+                log.info("-------------->进入  client side region scanner ");
                 long startTime = System.currentTimeMillis();
                 Configuration conf = Utils.getHadoopConf(config.getHbaseZookeeperQuorum(), config.getZookeeperClientPort());
                 Path root = new Path(config.getHbaseRootDir());
@@ -127,15 +139,20 @@ public class HBaseRecordSet implements RecordSet {
             }
             // Normal scan
             else {
+                log.info("-------------->进入  scan ");
                 Scan scan = getScanFromPrestoConstraint();
                 if (table != null) {
                     this.resultScanner = table.getScanner(scan);
+
                 }
+                log.info("scan------------>{"+scan.toString()+"}");
+
                 return new HBaseScanRecordCursor(this.columnHandles, this.hBaseSplit,
                         this.resultScanner, this.fieldIndexMap, this.connection);
             }
         } catch (Exception ex) {
             log.error(ex, ex.getMessage());
+            log.info("错误信息------》{"+ex.getMessage()+"}");
             if (connection != null) {
                 try {
                     connection.close();
@@ -167,11 +184,36 @@ public class HBaseRecordSet implements RecordSet {
     }
 
     private Filter getFilter(ConditionInfo condition) {
+        log.info("转换前{"+condition.getValue().toString()+"}");
+
 
         CompareFilter.CompareOp operator;
+        String value = String.valueOf(condition.getValue());
+        /**
+         * 根据类型进行一个转换
+         */
+        String string = condition.getType().toString();
+        log.info("condition.getType().toString()------->{"+condition.getType().toString()+"}");
+        switch (string) {
+            case "integer":
+                log.info("类型转换为--------》integet");
+                condition.setValue(Integer.valueOf(value));
+                break;
+            case "bigint":
+                log.info("类型转换为--------》bigint");
+                condition.setValue(BigInteger.valueOf(Long.valueOf(value)));
+                break;
+            case "double":
+                log.info("类型转换为--------》double");
+                condition.setValue(Double.valueOf(value));
+                break;
+            default:
+                log.info("类型转换为--------》string");
+                condition.setValue(value);
+                break;
+        }
+        log.info("进入了getFilter 方法{"+condition.toString()+"}");
 
-        condition.setValue(Utils.base(String.valueOf(condition.getValue())));
-    log.info("进入了getFilter 方法{"+condition.toString()+"}");
         switch (condition.getOperator()) {
             case GT:
                 operator = CompareFilter.CompareOp.GREATER;
@@ -189,12 +231,20 @@ public class HBaseRecordSet implements RecordSet {
                 operator = CompareFilter.CompareOp.EQUAL;
                 break;
         }
+
+        log.info("getFilter---operator-------------->{"+operator.toString()+"}");
+        log.info("getFilter--------columnHandles--------->{"+columnHandles.toString()+"}");
+
         SingleColumnValueFilter f = new SingleColumnValueFilter(
                 Bytes.toBytes(getFamilyByColumnName(condition.getColName(), columnHandles)),
-                Bytes.toBytes(condition.getColName()), operator,
+                Bytes.toBytes(condition.getColName()),
+                operator,
                 condition.valueToBytes());
         f.setFilterIfMissing(true);
+
         return f;
+
+
     }
 
     private String getFamilyByColumnName(String columnName, List<HBaseColumnHandle> columns) {
@@ -229,7 +279,7 @@ public class HBaseRecordSet implements RecordSet {
         });
 
         FilterList allFilters = new FilterList(FilterList.Operator.MUST_PASS_ALL);
-
+        log.info("allFilters------->{"+allFilters.toString()+"}");
         // ---------- Constraint push down ----------
         // This means user sql is like below:
         // select count(rowKey) / rowKey from table_xxx;
@@ -252,14 +302,20 @@ public class HBaseRecordSet implements RecordSet {
                 if (entry.getValue().size() > 1) {
                     List<Filter> columnFilterList = entry.getValue().stream().map(this::getFilter)
                             .collect(Collectors.toList());
+
                     FilterList columnFilter = new FilterList(FilterList.Operator.MUST_PASS_ONE, columnFilterList);
+
                     allFilters.addFilter(columnFilter);
                 }
                 // different columns
                 else {
+                    log.info("different columns----->{"+getFilter(entry.getValue().get(0)).toString()+"}");
+
                     allFilters.addFilter(getFilter(entry.getValue().get(0)));
+
                 }
             }
+            log.info("hBaseSplit.getConstraint().size()------->{"+hBaseSplit.getConstraint().size()+"}");
             if (hBaseSplit.getConstraint().size() >= 1) {
                 scan.setFilter(allFilters);
             }

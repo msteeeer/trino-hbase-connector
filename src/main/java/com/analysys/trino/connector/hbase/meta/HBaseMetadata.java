@@ -218,6 +218,7 @@ public class HBaseMetadata implements ConnectorMetadata {
         try {
             TableMetaInfo tableMetaInfo = Utils.getTableMetaInfoFromJson(schemaName, tableName,
                     this.hbaseClientManager.getConfig().getMetaDir());
+            log.info("tableMetaInfo--------------->{"+tableMetaInfo.toString()+"}");
             requireNonNull(tableMetaInfo,
                     String.format("The metadata of table %s.%s is null", schemaName, tableName));
 
@@ -227,6 +228,7 @@ public class HBaseMetadata implements ConnectorMetadata {
             Map<String, String> colNameAndFamilyNameMap = new HashMap<>();
             for (ColumnMetaInfo col : cols) {
                 columnNames.add(col.getColumnName());
+//                log.info("col.getType()----------->{"+col.getType().toString()+"}");
                 columnTypes.add(Utils.matchType(col.getType()));
                 colNameAndFamilyNameMap.put(col.getColumnName(), col.getFamily());
             }

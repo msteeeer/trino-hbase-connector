@@ -48,12 +48,20 @@ public class HBaseTables {
     Map<SchemaTableName, HBaseTableHandle> getTables(Admin admin, String schema) {
         Map<SchemaTableName, HBaseTableHandle> tables;
         try {
+//            logger.info("进入getTables 方法 admin参数 {"+admin.toString()+"}schema参数"+schema.toString()+"");
+
             ImmutableMap.Builder<SchemaTableName, HBaseTableHandle> tablesBuilder = ImmutableMap.builder();
+//            logger.info("方法到这里了tablesBuilder------》");
             List<TableDescriptor> descriptors = admin.listTableDescriptorsByNamespace(schema.getBytes());
+
+//            logger.info("方法到这里了descriptors------》");
             for (TableDescriptor table : descriptors) {
                 // If the target table is in the other namespace, table.getNameAsString() will return
                 // value like 'namespace1:tableName1', so we have to remove the unnecessary namespace.
+//                logger.info("方法到这里了for------》{"+table.toString()+"}");
                 String tableName = table.getTableName().getNameAsString();
+
+//                logger.info("方法到这里了------》{"+tableName.toString()+"}");
                 if (tableName != null && tableName.contains(":")) {
                     tableName = tableName.split(":")[1];
                 }

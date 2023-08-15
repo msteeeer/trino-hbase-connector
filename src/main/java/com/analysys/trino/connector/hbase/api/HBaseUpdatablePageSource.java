@@ -45,9 +45,9 @@ public class HBaseUpdatablePageSource implements UpdatablePageSource {
 
     public HBaseUpdatablePageSource(HBaseRecordSet recordSet, HBaseClientManager clientManager) {
         this.schemaName = recordSet.getHBaseSplit().getSchemaName();
-        log.info("HBaseUpdatablePageSource-----schemaName------->{"+schemaName.toString()+"}");
+//        log.info("HBaseUpdatablePageSource-----schemaName------->{"+schemaName.toString()+"}");
         this.tableName = recordSet.getHBaseSplit().getTableName();
-        log.info("HBaseUpdatablePageSource-----tableName------->{"+tableName.toString()+"}");
+//        log.info("HBaseUpdatablePageSource-----tableName------->{"+tableName.toString()+"}");
         this.inner = new RecordPageSource(recordSet);
 
         this.clientManager = clientManager;
@@ -55,6 +55,7 @@ public class HBaseUpdatablePageSource implements UpdatablePageSource {
 
     @Override
     public void deleteRows(Block rowIds) {
+        log.info("进入删除方法----->{"+rowIds.toString()+"}");
         try (Connection conn = clientManager.createConnection();
              Table table = conn.getTable(TableName.valueOf(schemaName + ":" + tableName))) {
             List<Delete> deletes = new ArrayList<>();

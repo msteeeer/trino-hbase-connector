@@ -18,10 +18,12 @@ import com.analysys.trino.connector.hbase.frame.HBaseConnectorId;
 import com.analysys.trino.connector.hbase.meta.*;
 import com.analysys.trino.connector.hbase.utils.Constant;
 import com.analysys.trino.connector.hbase.utils.TimeTicker;
+
 import com.analysys.trino.connector.hbase.utils.Utils;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
+import com.google.inject.Key;
 import io.airlift.log.Logger;
 import io.airlift.slice.Slice;
 import io.trino.spi.HostAddress;
@@ -29,16 +31,21 @@ import io.trino.spi.connector.*;
 import io.trino.spi.predicate.Domain;
 import io.trino.spi.predicate.Range;
 import io.trino.spi.predicate.TupleDomain;
+import io.trino.spi.type.*;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.RegionInfo;
+import org.apache.jasper.tagplugins.jstl.ForEach;
+import org.checkerframework.checker.units.qual.K;
 
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static com.analysys.trino.connector.hbase.utils.Constant.*;
 import static com.analysys.trino.connector.hbase.utils.Utils.isEmpty;
+import static io.trino.spi.predicate.Utils.nativeValueToBlock;
 
 /**
  * HBase split manager
@@ -123,6 +130,7 @@ public class HBaseSplitManager implements ConnectorSplitManager {
         Preconditions.checkState(table != null, "Table %s.%s no longer exists", schemaName, tableName);
 
         TupleDomain<ColumnHandle> constraint = tableHandle.getConstraint();
+        log.info("constraint--------"+constraint.toString());
 
         TableMetaInfo tableMetaInfo = Utils.getTableMetaInfoFromJson(schemaName, tableName, config.getMetaDir());
         Preconditions.checkState(tableMetaInfo != null,
@@ -131,6 +139,7 @@ public class HBaseSplitManager implements ConnectorSplitManager {
 
         List<HBaseSplit> splits;
         List<ConditionInfo> conditions = findConditionFromConstraint(constraint);
+
 
         // batch get
     if (Utils.isBatchGet(conditions, tableMetaInfo.getRowKeyColName())) {
@@ -270,6 +279,7 @@ public class HBaseSplitManager implements ConnectorSplitManager {
      */
     private List<HBaseSplit> getSplitsForScan(List<ConditionInfo> conditions,
                                               TableMetaInfo tableMetaInfo) {
+
         String schemaName = tableMetaInfo.getSchemaName();
         String tableName = tableMetaInfo.getTableName();
         log.info("NormalRegionScanner:" + schemaName + ":" + tableName);
@@ -277,6 +287,8 @@ public class HBaseSplitManager implements ConnectorSplitManager {
         int hostIndex = 0;
         List<String> notSaltyPartStartKeyList;
         List<StartAndEnd> saltyPartStartKeyList;
+
+
 
         // make startKey by rowKey format and constraint.
         if (!conditions.isEmpty() && !isEmpty(tableMetaInfo.getRowKeyFormat())) {
@@ -327,19 +339,58 @@ public class HBaseSplitManager implements ConnectorSplitManager {
                 }
             }
         } else {
-            // have no constraints to create the StartKey, and RowKey has no salt part on the prefix like '01-xxxxx',
+
+            List<ConditionInfo> rowkeyConditions = conditions.stream()
+                    .filter(key -> key.getColName().equals("rowkey")).collect(Collectors.toList());
+            rowkeyConditions.stream().peek(key->{
+                    key.setValue(key.getType().getObjectValue(null, nativeValueToBlock(key.getType(), key.getValue()), 0));
+                }).collect(Collectors.toList());
+
+            conditions = conditions.stream()
+                    .filter(key -> !key.getColName().equals("rowkey")).collect(Collectors.toList());
+
+        // have no constraints to create the StartKey, and RowKey has no salt part on the prefix like '01-xxxxx',
             // have to scan full table using one single split,
             // check if the prefix of rowKey are random code so we still can create multiple splits
             if (StringUtils.isNotEmpty(tableMetaInfo.getRowKeyFirstCharRange())) {
                 addSplitsOnlyBySaltyPart(splits, schemaName, tableName, tableMetaInfo.getRowKeyColName(),
                         conditions, tableMetaInfo.getRowKeyFirstCharRange());
+//                log.info("---------StringUtils.isNotEmpty");
             }
             // single split
             else {
+                log.info("---------splits.add");
+//                splits.add(createHBaseSplit(schemaName, tableName,
+//                        tableMetaInfo.getRowKeyColName(), hostIndex,
+//                        null, null, conditions, -1, null, null))
+                //对rowkey条件参数进行分片 截取条件的第一个字符
+                List<Object> collect = rowkeyConditions.stream().map(ConditionInfo::getValue).collect(Collectors.toList());
+                ConcurrentHashMap<String, String> hashMap = new ConcurrentHashMap<>();
+
+                rowkeyConditions.stream().forEach(key->{
+                    CONDITION_OPER operator = key.getOperator();
+                    log.info("operator--"+operator.name());
+                    switch (operator.name()) {
+                        case "GT":
+                            hashMap.put("STARTROW",String.valueOf(key.getValue()).substring(0,1));
+                          break;
+                        case "LT":
+                            hashMap.put("ENDROW",String.valueOf(key.getValue()).substring(0,1));
+                            break;
+                        case "GE":
+                            hashMap.put("STARTROW",String.valueOf(key.getValue()).substring(0,1));
+                            break;
+                        case "LE":
+                            hashMap.put("ENDROW",String.valueOf(key.getValue()).substring(0,1));
+                            break;
+                        default:
+                    }
+                });
                 splits.add(createHBaseSplit(schemaName, tableName,
                         tableMetaInfo.getRowKeyColName(), hostIndex,
-                        null, null, conditions, -1, null, null));
+                        hashMap.get("STARTROW"),  hashMap.get("ENDROW")+"|", conditions, -1, null, null));
             }
+
         }
 
         return splits;
@@ -553,6 +604,7 @@ public class HBaseSplitManager implements ConnectorSplitManager {
      * @return all available constraint from Sql
      */
     private List<ConditionInfo> findConditionFromConstraint(TupleDomain<ColumnHandle> constraint) {
+      log.info("findConditionFromConstraint---> true");
         List<ConditionInfo> handles = new ArrayList<>();
         if (!constraint.getDomains().isPresent()) {
             return handles;
@@ -563,14 +615,16 @@ public class HBaseSplitManager implements ConnectorSplitManager {
 
         for (ColumnHandle ch : keySet) {
             HBaseColumnHandle hch = (HBaseColumnHandle) ch;
-
+            log.info("HBaseColumnHandle---"+hch.toString());
             Domain domain = domainMap.get(hch);
+            log.info("domain---"+domain.toString());
             if (domain == null) {
                 continue;
             }
 
             if (domain.isSingleValue()) {
                 Object value = domain.getNullableSingleValue();
+                log.info("value---"+value.toString());
                 // =
                 if (value instanceof Slice) {
                     handles.add(new ConditionInfo(hch.getColumnName(), CONDITION_OPER.EQ,
@@ -580,16 +634,25 @@ public class HBaseSplitManager implements ConnectorSplitManager {
                             value, domain.getType()));
                 }
             } else {
+                log.info("-------else for");
                 for (Range range : domain.getValues().getRanges().getOrderedRanges()) {
+
+                    log.info("range -------"+range.toString());
+
                     if (range.isSingleValue()) {
+                        log.info("if--"+range.getLowBoundedValue());
                         handles.add(new ConditionInfo(hch.getColumnName(), CONDITION_OPER.EQ,
                                 range.getSingleValue(), domain.getType()));
                     } else {
+//                        Object objectValue = range.getType().getObjectValue(null, nativeValueToBlock(range.getType(), range.getLowBoundedValue()), 0);
+//                        log.info("getLowBoundedValue--"+range.getLowBoundedValue());
+//                        log.info("getHighBoundedValue"+range.getHighBoundedValue());
                         if (!range.isLowUnbounded()) {
                             if (range.isLowInclusive()) {
                                 handles.add(new ConditionInfo(hch.getColumnName(), CONDITION_OPER.GE,
                                         range.getLowBoundedValue(), domain.getType()));
                             } else {
+
                                 handles.add(new ConditionInfo(hch.getColumnName(), CONDITION_OPER.GT,
                                         range.getLowBoundedValue(), domain.getType()));
                             }

@@ -19,6 +19,7 @@ import com.google.common.collect.ImmutableList;
 import io.trino.spi.connector.ConnectorInsertTableHandle;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.type.Type;
+import org.mortbay.log.Log;
 
 import java.util.List;
 import java.util.Map;
@@ -58,6 +59,7 @@ public class HBaseInsertTableHandle implements ConnectorInsertTableHandle {
         this.connectorId = requireNonNull(connectorId, "connectorId is null");
         this.rowKeyColumnChannel = rowKeyColumnChannel;
         this.colNameAndFamilyNameMap = colNameAndFamilyNameMap;
+//        Log.info("connectorId-------->{"+connectorId+"}");
     }
 
     @JsonProperty

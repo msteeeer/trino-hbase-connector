@@ -56,8 +56,8 @@ public class HBaseGetRecordCursor extends HBaseRecordCursor {
 
     HBaseGetRecordCursor(List<HBaseColumnHandle> columnHandles, HBaseSplit hBaseSplit,
                          Map<Integer, HBaseColumnHandle> fieldIndexMap, Connection connection) {
-        log.info("----------------->进入HBaseGetRecordCursor（）方法");
-        log.info("hBaseSplit 参数------------->{"+hBaseSplit.toString()+"}");
+//        log.info("----------------->进入HBaseGetRecordCursor（）方法");
+//        log.info("hBaseSplit 参数------------->{"+hBaseSplit.toString()+"}");
 
         startTime = System.currentTimeMillis();
         this.columnHandles = columnHandles;
@@ -87,11 +87,11 @@ public class HBaseGetRecordCursor extends HBaseRecordCursor {
     }
 
     private Result[] getResults(List<String> rowKeys, Table table) {
-        log.info("进入 getResults方法------");
+//        log.info("进入 getResults方法------");
         List<Get> gets = rowKeys.stream().map(rowKey -> {
-            log.info("解码前------》{"+rowKey+"}");
+//            log.info("解码前------》{"+rowKey+"}");
              rowKey = Utils.base(rowKey);
-            log.info("解码后------》{"+rowKey+"}");
+//            log.info("解码后------》{"+rowKey+"}");
 
                     Get get = new Get(Bytes.toBytes(rowKey));
                     for (ColumnHandle ch : columnHandles) {

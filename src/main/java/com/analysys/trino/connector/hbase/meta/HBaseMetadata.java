@@ -218,14 +218,18 @@ public class HBaseMetadata implements ConnectorMetadata {
         try {
             TableMetaInfo tableMetaInfo = Utils.getTableMetaInfoFromJson(schemaName, tableName,
                     this.hbaseClientManager.getConfig().getMetaDir());
-            log.info("tableMetaInfo--------------->{"+tableMetaInfo.toString()+"}");
+//            log.info("tableMetaInfo--------------->{"+tableMetaInfo.toString()+"}");
             requireNonNull(tableMetaInfo,
                     String.format("The metadata of table %s.%s is null", schemaName, tableName));
 
             List<ColumnMetaInfo> cols = tableMetaInfo.getColumns();
+
             List<String> columnNames = new ArrayList<>(cols.size());
+
             List<Type> columnTypes = new ArrayList<>(cols.size());
+
             Map<String, String> colNameAndFamilyNameMap = new HashMap<>();
+
             for (ColumnMetaInfo col : cols) {
                 columnNames.add(col.getColumnName());
 //                log.info("col.getType()----------->{"+col.getType().toString()+"}");
@@ -233,6 +237,11 @@ public class HBaseMetadata implements ConnectorMetadata {
                 colNameAndFamilyNameMap.put(col.getColumnName(), col.getFamily());
             }
             int rowKeyColumnChannel = this.findRowKeyChannel(tableMetaInfo.getColumns());
+
+//            log.info("cols--------------->{"+cols.toString()+"}");
+//            log.info("columnNames--------------->{"+columnNames.toString()+"}");
+//            log.info("columnTypes--------------->{"+columnTypes.toString()+"}");
+//            log.info("rowKeyColumnChannel------->{"+rowKeyColumnChannel+"}");
             return new HBaseInsertTableHandle(
                     connectorId.getId(),
                     tableHandle.getSchemaTableName(),
@@ -262,6 +271,7 @@ public class HBaseMetadata implements ConnectorMetadata {
                                                           ConnectorInsertTableHandle insertHandle,
                                                           Collection<Slice> fragments,
                                                           Collection<ComputedStatistics> computedStatistics) {
+        log.info("插入完成");
         return Optional.empty();
     }
 
@@ -296,9 +306,10 @@ public class HBaseMetadata implements ConnectorMetadata {
                 rowKeyInfo.isRowKey());
     }
 
-
-    public ConnectorTableHandle beginDelete(ConnectorSession session, ConnectorTableHandle tableHandle) {
-        return fromConnectorTableHandle(tableHandle);
+    @Override
+    public Optional<ConnectorTableHandle> applyDelete(ConnectorSession session, ConnectorTableHandle tableHandle) {
+    log.info("进入删除方法");
+        return Optional.of(fromConnectorTableHandle(tableHandle));
     }
 
 

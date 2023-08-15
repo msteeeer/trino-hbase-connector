@@ -67,7 +67,7 @@ public class Utils {
             String tableMetaPath = metaDir + File.separator
                     + (schemaName == null || "".equals(schemaName) ? Constant.DEFAULT_HBASE_NAMESPACE_NAME : schemaName)
                     + File.separator + tableName + Constant.TABLE_META_FILE_TAIL;
-           logger.info("tableMetaPath-------->{"+tableMetaPath.toString()+"}");
+//           logger.info("tableMetaPath-------->{"+tableMetaPath.toString()+"}");
             return FileUtils.readFileToString(new File(tableMetaPath), Constant.JSON_ENCODING_UTF8);
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
@@ -89,7 +89,7 @@ public class Utils {
         try {
             ObjectMapper mapper = new ObjectMapper();
             String jsonString = readTableJson(schemaName, tableName, metaDir);
-            logger.info("jsonString------>{"+jsonString+"}");
+//            logger.info("jsonString------>{"+jsonString+"}");
             return mapper.readValue(jsonString, TableMetaInfo.class);
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
@@ -114,20 +114,20 @@ public class Utils {
         try {
             String jsonStr = readTableJson(schemaName, tableName, metaDir);
 
-            logger.info("getColumnMetaFromJson-jsonStr----------->{"+jsonStr.toString()+"}");
+//            logger.info("getColumnMetaFromJson-jsonStr----------->{"+jsonStr.toString()+"}");
             JSONObject obj = new JSONObject(jsonStr);
             JSONArray cols = obj.getJSONArray(Constant.JSON_TABLEMETA_COLUMNES);
-            logger.info("JSONArray--cols-------------{"+cols.toString()+"}");
+//            logger.info("JSONArray--cols-------------{"+cols.toString()+"}");
             boolean hasRowKey = false;
             for (int i = 0; i < cols.length(); i++) {
                 JSONObject temp = new JSONObject(cols.getString(i));
-                logger.info("temp----------->{"+temp.toString()+"}");
+//                logger.info("temp----------->{"+temp.toString()+"}");
                 String family = temp.getString(Constant.JSON_TABLEMETA_FAMILY);
-                logger.info("family----------->{"+family.toString()+"}");
+//                logger.info("family----------->{"+family.toString()+"}");
                 String columnName = temp.getString(Constant.JSON_TABLEMETA_COLUMNNAME);
                 String type = temp.getString(Constant.JSON_TABLEMETA_TYPE);
 
-                logger.info("temp----------->{"+type.toString()+"}");
+//                logger.info("temp----------->{"+type.toString()+"}");
                 boolean isRowKey = temp.getBoolean(Constant.JSON_TABLEMETA_ISROWKEY);
 
                 columnsMetadata.add(new HBaseColumnMetadata(family, columnName, matchType(type), isRowKey));

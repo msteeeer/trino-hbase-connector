@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.analysys.trino.connector.hbase.utils.Constant.ARRAY_STRING_SPLITTER;
 import static com.analysys.trino.connector.hbase.utils.Constant.SYSTEMOUT_INTERVAL;
@@ -64,9 +65,11 @@ public class HBasePageSink implements ConnectorPageSink {
     private final int rowKeyColumnChannel;
     private final Map<String, String> colNameAndFamilyNameMap;
 
+    private  static volatile AtomicInteger  count = new AtomicInteger(0);
     public HBasePageSink(HBaseClientManager clientManager,
                          HBaseInsertTableHandle insertTableHandle) {
         requireNonNull(clientManager, "clientManager is null");
+
         this.columnTypes = insertTableHandle.getColumnTypes();
         this.columnNames = insertTableHandle.getColumnNames();
 
@@ -84,14 +87,18 @@ public class HBasePageSink implements ConnectorPageSink {
 
     @Override
     public CompletableFuture<?> appendPage(Page page) {
+//        log.info("进入添加方法--------------------》{"+page.toString()+"}");
+//        StringBuffer keyBuffer= new StringBuffer();
         long startTime = System.currentTimeMillis();
         List<Put> puts = new ArrayList<>(10000);
         String rowKey = null;
         try (Connection connection = this.clientManager.createConnection();
              Table table = connection.getTable(TableName.valueOf(schemaName + ":" + tableName))) {
-
             for (int position = 0; position < page.getPositionCount(); position++) {
+                count.incrementAndGet();
                 rowKey = getRowKeyByChannel(page, this.rowKeyColumnChannel, position);
+//                log.info(" rowKey "+rowKey.toString()+"");
+//                keyBuffer.append(rowKey).append(",");
                 Put put = new Put(Bytes.toBytes(rowKey));
                 for (int channel = 0; channel < page.getChannelCount(); channel++) {
                     // The value of rowKey has been planted in object Put already,
@@ -103,13 +110,19 @@ public class HBasePageSink implements ConnectorPageSink {
                 }
                 puts.add(put);
 
+//                Thread.sleep(1000);
+
                 if (puts.size() >= 10000) {
+//                    log.info("count -------------------->{"+count+"}");
                     table.put(puts);
                     puts.clear();
                 }
+
             }
 
             table.put(puts);
+//            log.info("count -------------------->{"+count+"}");
+//            log.info("rowKey-------------------->{"+rowKey.toString()+"}");
 
             if (System.currentTimeMillis() % SYSTEMOUT_INTERVAL == 0)
                 log.info("INSERT DATA. StartTime=" + new Date(startTime).toString()
@@ -118,9 +131,12 @@ public class HBasePageSink implements ConnectorPageSink {
                         + ", table=" + schemaName + ":" + tableName);
 
         } catch (Exception e) {
-            log.error(e.getMessage(), e);
+            log.error(e.getMessage(),e);
+//            throw new RuntimeException(e);
+//            return CompletableFuture.completedFuture(e);
         }
 
+//        log.info("allKeys:"+keyBuffer.toString());
         return NOT_BLOCKED;
     }
 
@@ -214,6 +230,7 @@ public class HBasePageSink implements ConnectorPageSink {
     }
 
     private void closeSession() {
+        log.error("------------- closeSession");
     }
 
 }

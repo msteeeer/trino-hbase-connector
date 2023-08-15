@@ -18,7 +18,7 @@ import com.analysys.trino.connector.hbase.meta.HBaseInsertTableHandle;
 import com.google.inject.Inject;
 import io.trino.spi.TrinoException;
 import io.trino.spi.connector.*;
-
+import org.mortbay.log.Log;
 
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -62,15 +62,15 @@ public class HBasePageSinkProvider implements ConnectorPageSinkProvider {
         throw new TrinoException(NOT_SUPPORTED, "This connector does not support creating table.");
     }
 
-    public ConnectorPageSink createPageSink(ConnectorTransactionHandle transactionHandle, ConnectorSession session,
-                                            ConnectorInsertTableHandle insertTableHandle) {
-        requireNonNull(insertTableHandle, "insertTableHandle is null.");
-        checkArgument(insertTableHandle instanceof HBaseInsertTableHandle,
-                "insertTableHandle is not an instance of HBaseInsertTableHandle.");
-        HBaseInsertTableHandle handle = (HBaseInsertTableHandle) insertTableHandle;
-
-        return new HBasePageSink(clientManager, handle);
-    }
+//    public ConnectorPageSink createPageSink(ConnectorTransactionHandle transactionHandle, ConnectorSession session,
+//                                            ConnectorInsertTableHandle insertTableHandle) {
+//        requireNonNull(insertTableHandle, "insertTableHandle is null.");
+//        checkArgument(insertTableHandle instanceof HBaseInsertTableHandle,
+//                "insertTableHandle is not an instance of HBaseInsertTableHandle.");
+//        HBaseInsertTableHandle handle = (HBaseInsertTableHandle) insertTableHandle;
+//
+//        return new HBasePageSink(clientManager, handle);
+//    }
 
     @Override
     public ConnectorPageSink createPageSink(ConnectorTransactionHandle transactionHandle,
@@ -82,6 +82,11 @@ public class HBasePageSinkProvider implements ConnectorPageSinkProvider {
         checkArgument(insertTableHandle instanceof HBaseInsertTableHandle,
                 "insertTableHandle is not an instance of HBaseInsertTableHandle.");
         HBaseInsertTableHandle handle = (HBaseInsertTableHandle) insertTableHandle;
+        Log.info("transactionHandle ---->{"+transactionHandle.toString()+"}");
+        Log.info("session ---->{"+session.toString()+"}");
+        Log.info("insertTableHandle ---->{"+insertTableHandle.toString()+"}");
+        Log.info("pageSinkId ---->{"+pageSinkId.toString()+"}");
+
         return new HBasePageSink(clientManager, handle);
     }
 }

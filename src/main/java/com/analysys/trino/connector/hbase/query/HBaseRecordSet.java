@@ -18,17 +18,15 @@ import com.analysys.trino.connector.hbase.meta.HBaseColumnHandle;
 import com.analysys.trino.connector.hbase.meta.HBaseConfig;
 import com.analysys.trino.connector.hbase.schedule.ConditionInfo;
 import com.analysys.trino.connector.hbase.schedule.HBaseSplit;
-import com.analysys.trino.connector.hbase.utils.Constant;
 import com.analysys.trino.connector.hbase.utils.Utils;
 import io.airlift.log.Logger;
 import io.trino.spi.connector.ColumnHandle;
 import io.trino.spi.connector.RecordCursor;
 import io.trino.spi.connector.RecordSet;
-import io.trino.spi.type.*;
+import io.trino.spi.type.Type;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.filter.*;
@@ -39,11 +37,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hdfs.protocol.AlreadyBeingCreatedException;
 
 import java.math.BigInteger;
-import java.security.Key;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -65,7 +59,13 @@ public class HBaseRecordSet implements RecordSet {
     private HBaseConfig config;
 
     HBaseRecordSet(HBaseSplit split, List<ColumnHandle> columnHandles, HBaseClientManager clientManager) {
+
+
+
+
+
         this.hBaseSplit = Objects.requireNonNull(split, "split is null");
+        log.info("this.hBaseSplit---"+this.hBaseSplit.getConstraint());
         Objects.requireNonNull(clientManager, "clientManager is null");
         this.config = clientManager.getConfig();
 
@@ -86,18 +86,17 @@ public class HBaseRecordSet implements RecordSet {
 
     @Override
     public RecordCursor cursor() {
-//        log.info("----------->进入cursor（）方法");
+
+
         try (
                 Table table = connection
                 .getTable(TableName.valueOf(
                         hBaseSplit.getSchemaName() + ":" + hBaseSplit.getTableName()))) {
-//            log.info("this.hBaseSplit.getRegionInfo()-------->{"+this.hBaseSplit.toString()+"}");
+
 
             //eq 走这里
             // Check out if this is batch get
             if (Utils.isBatchGet(this.hBaseSplit.getConstraint(), hBaseSplit.getRowKeyName())) {
-//                log.info("this.hBaseSplit.getConstraint()------>{"+this.hBaseSplit.getConstraint().toString()+"}");
-//                log.info("hBaseSplit.getRowKeyName()------>{"+hBaseSplit.getRowKeyName()+"}");
 
                 return new HBaseGetRecordCursor(this.columnHandles,
                         this.hBaseSplit, this.fieldIndexMap, this.connection);
@@ -105,8 +104,9 @@ public class HBaseRecordSet implements RecordSet {
 
             // client side region scanner
             else if (this.hBaseSplit.getRegionInfo() != null) {
+//                log.info("this.hBaseSplit.getRegionInfo()---"+this.hBaseSplit.getRegionInfo());
                 Scan scan = getScanFromPrestoConstraint();
-//                log.info("-------------->进入  client side region scanner ");
+
                 long startTime = System.currentTimeMillis();
                 Configuration conf = Utils.getHadoopConf(config.getHbaseZookeeperQuorum(), config.getZookeeperClientPort());
                 Path root = new Path(config.getHbaseRootDir());
@@ -139,13 +139,14 @@ public class HBaseRecordSet implements RecordSet {
             }
             // Normal scan
             else {
-//                log.info("-------------->进入  scan ");
+
                 Scan scan = getScanFromPrestoConstraint();
+//                log.info("this.hBaseSplit---"+this.hBaseSplit.getConstraint());
+
                 if (table != null) {
                     this.resultScanner = table.getScanner(scan);
 
                 }
-//                log.info("scan------------>{"+scan.toString()+"}");
 
                 return new HBaseScanRecordCursor(this.columnHandles, this.hBaseSplit,
                         this.resultScanner, this.fieldIndexMap, this.connection);
@@ -184,8 +185,6 @@ public class HBaseRecordSet implements RecordSet {
     }
 
     private Filter getFilter(ConditionInfo condition) {
-//        log.info("转换前{"+condition.getValue().toString()+"}");
-
 
         CompareFilter.CompareOp operator;
         String value = String.valueOf(condition.getValue());
@@ -193,26 +192,22 @@ public class HBaseRecordSet implements RecordSet {
          * 根据类型进行一个转换
          */
         String string = condition.getType().toString();
-        log.info("condition.getType().toString()------->{"+condition.getType().toString()+"}");
+
         switch (string) {
             case "integer":
-                log.info("类型转换为--------》integet");
                 condition.setValue(Integer.valueOf(value));
                 break;
             case "bigint":
-                log.info("类型转换为--------》bigint");
                 condition.setValue(BigInteger.valueOf(Long.valueOf(value)));
                 break;
             case "double":
-                log.info("类型转换为--------》double");
                 condition.setValue(Double.valueOf(value));
                 break;
             default:
-                log.info("类型转换为--------》string");
                 condition.setValue(value);
                 break;
         }
-//        log.info("进入了getFilter 方法{"+condition.toString()+"}");
+
 
         switch (condition.getOperator()) {
             case GT:
@@ -232,8 +227,7 @@ public class HBaseRecordSet implements RecordSet {
                 break;
         }
 
-//        log.info("getFilter---operator-------------->{"+operator.toString()+"}");
-//        log.info("getFilter--------columnHandles--------->{"+columnHandles.toString()+"}");
+
 
         SingleColumnValueFilter f = new SingleColumnValueFilter(
                 Bytes.toBytes(getFamilyByColumnName(condition.getColName(), columnHandles)),
@@ -245,6 +239,18 @@ public class HBaseRecordSet implements RecordSet {
         return f;
 
 
+    }
+
+    private List<String>getRowkey(List<HBaseColumnHandle> hBaseColumnHandles){
+        List<String> strings = new ArrayList<>();
+       try {
+           strings = hBaseColumnHandles.stream().filter(key -> key.isRowKey()).collect(Collectors.toList())
+                   .stream().map(HBaseColumnHandle::getColumnName).collect(Collectors.toList());
+       }catch (Exception e){
+           log.error("未获取到rwokey");
+       }
+
+        return strings;
     }
 
     private String getFamilyByColumnName(String columnName, List<HBaseColumnHandle> columns) {
@@ -259,6 +265,27 @@ public class HBaseRecordSet implements RecordSet {
     }
 
     private Scan getScanFromPrestoConstraint() {
+
+        List<String> rowkey = this.getRowkey(columnHandles.stream().map(ch -> (HBaseColumnHandle) ch).collect(Collectors.toList()));
+
+        Iterator<ConditionInfo> iterator = this.hBaseSplit.getConstraint().iterator();
+        while (iterator.hasNext()) {
+            ConditionInfo next = iterator.next();
+            if(rowkey.contains(next.getColName())){
+                log.info("remove---"+next.toString());
+                iterator.remove();
+            }
+
+        }
+
+//        for (ConditionInfo conditionInfo:this.hBaseSplit.getConstraint()) {
+//            if(conditionInfo.getColName().equals("rowkey")){
+//                log.info("删除成功");
+//                this.hBaseSplit.getConstraint().remove(conditionInfo);
+//            }
+//        }
+            log.info("this.hBaseSplit.getConstraint()--"+this.hBaseSplit.getConstraint().toString());
+
         Scan scan = new Scan().setCaching(10000);
         scan.setLoadColumnFamiliesOnDemand(true);
         scan.setCacheBlocks(true);
@@ -266,7 +293,6 @@ public class HBaseRecordSet implements RecordSet {
         // Filter the exactly columns we want
         // for (HBaseColumnHandle hch : this.columnHandles) {
         this.columnHandles.forEach(hch -> {
-//            log.info("hch---------->{"+hch.toString()+"}");
             if (this.hBaseSplit.getRowKeyName() == null) {
                 scan.addColumn(
                         Bytes.toBytes(hch.getFamily()), Bytes.toBytes(hch.getColumnName()));
@@ -291,7 +317,7 @@ public class HBaseRecordSet implements RecordSet {
         } else {
             Map<String, List<ConditionInfo>> conditions = hBaseSplit.getConstraint().stream()
                     .collect(Collectors.groupingBy(ConditionInfo::getColName));
-//            log.info("conditions----------》{"+conditions.toString()+"}");
+
 
 
             // Here is what kind of condition presto can give to us:
@@ -309,13 +335,11 @@ public class HBaseRecordSet implements RecordSet {
                 }
                 // different columns
                 else {
-//                    log.info("different columns----->{"+getFilter(entry.getValue().get(0)).toString()+"}");
-
                     allFilters.addFilter(getFilter(entry.getValue().get(0)));
 
                 }
             }
-//            log.info("hBaseSplit.getConstraint().size()------->{"+hBaseSplit.getConstraint().size()+"}");
+
             if (hBaseSplit.getConstraint().size() >= 1) {
                 scan.setFilter(allFilters);
             }

@@ -37,7 +37,7 @@ public class HBaseSplit implements ConnectorSplit {
     private final List<HostAddress> addresses;
     private final String startRow;
     private final String endRow;
-    private final List<ConditionInfo> constraint;
+    private  final List<ConditionInfo> constraint;
     private final String rowKeyName;
     private final Integer regionIndex;
     private final RegionInfo regionInfo;
@@ -70,6 +70,8 @@ public class HBaseSplit implements ConnectorSplit {
         this.regionInfo = regionInfo;
         this.snapshotName = snapshotName;
     }
+
+
 
     @JsonProperty
     public String getConnectorId() {

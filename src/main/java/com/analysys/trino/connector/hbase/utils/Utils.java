@@ -16,6 +16,7 @@ package com.analysys.trino.connector.hbase.utils;
 import com.analysys.trino.connector.hbase.meta.HBaseColumnMetadata;
 import com.analysys.trino.connector.hbase.meta.TableMetaInfo;
 import com.analysys.trino.connector.hbase.schedule.ConditionInfo;
+import com.analysys.trino.connector.hbase.schedule.HBaseSplitManager;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -39,8 +40,10 @@ import org.codehaus.jettison.json.JSONObject;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 /**
@@ -319,6 +322,7 @@ public class Utils {
 
         return str;
     }
+
 
 
 }

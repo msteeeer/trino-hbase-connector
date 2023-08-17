@@ -44,8 +44,6 @@ public class HBaseTable {
             String tableName = tableNameAsString != null && tableNameAsString.contains(":") ?
                     tableNameAsString.split(":")[1] : tableNameAsString;
 
-//            logger.info("读取数据文件-------------》{"+config.getMetaDir().toString()+"}");
-
             tableMeta = Utils.getColumnMetaFromJson(schemaName, tableName, config.getMetaDir());
 
 

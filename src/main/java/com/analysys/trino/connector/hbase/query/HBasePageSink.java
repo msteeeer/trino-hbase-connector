@@ -58,6 +58,7 @@ public class HBasePageSink implements ConnectorPageSink {
     private static final Logger log = Logger.get(HBasePageSink.class);
 
     private final List<Type> columnTypes;
+    private final static int MAX_RETRY = 3;
     private final List<String> columnNames;
     private String schemaName = null;
     private String tableName = null;
@@ -87,55 +88,63 @@ public class HBasePageSink implements ConnectorPageSink {
 
     @Override
     public CompletableFuture<?> appendPage(Page page) {
-//        log.info("进入添加方法--------------------》{"+page.toString()+"}");
+        int retry = 0;
+        while(true) {
 //        StringBuffer keyBuffer= new StringBuffer();
-        long startTime = System.currentTimeMillis();
-        List<Put> puts = new ArrayList<>(10000);
-        String rowKey = null;
-        try (Connection connection = this.clientManager.createConnection();
-             Table table = connection.getTable(TableName.valueOf(schemaName + ":" + tableName))) {
-            for (int position = 0; position < page.getPositionCount(); position++) {
-                count.incrementAndGet();
-                rowKey = getRowKeyByChannel(page, this.rowKeyColumnChannel, position);
-//                log.info(" rowKey "+rowKey.toString()+"");
+            long startTime = System.currentTimeMillis();
+            List<Put> puts = new ArrayList<>(10000);
+            String rowKey = null;
+            try (Connection connection = this.clientManager.createConnection();
+                 Table table = connection.getTable(TableName.valueOf(schemaName + ":" + tableName))) {
+                for (int position = 0; position < page.getPositionCount(); position++) {
+                    count.incrementAndGet();
+                    rowKey = getRowKeyByChannel(page, this.rowKeyColumnChannel, position);
+
 //                keyBuffer.append(rowKey).append(",");
-                Put put = new Put(Bytes.toBytes(rowKey));
-                for (int channel = 0; channel < page.getChannelCount(); channel++) {
-                    // The value of rowKey has been planted in object Put already,
-                    // so we don't need to append it here.
-                    if (channel == rowKeyColumnChannel) {
-                        continue;
+                    Put put = new Put(Bytes.toBytes(rowKey));
+                    for (int channel = 0; channel < page.getChannelCount(); channel++) {
+                        // The value of rowKey has been planted in object Put already,
+                        // so we don't need to append it here.
+                        if (channel == rowKeyColumnChannel) {
+                            continue;
+                        }
+                        appendColumnValue(put, page, position, channel, channel);
                     }
-                    appendColumnValue(put, page, position, channel, channel);
-                }
-                puts.add(put);
+                    puts.add(put);
 
 //                Thread.sleep(1000);
 
-                if (puts.size() >= 10000) {
-//                    log.info("count -------------------->{"+count+"}");
-                    table.put(puts);
-                    puts.clear();
+                    if (puts.size() >= 10000) {
+
+                        table.put(puts);
+                        puts.clear();
+                    }
                 }
 
-            }
+                table.put(puts);
 
-            table.put(puts);
-//            log.info("count -------------------->{"+count+"}");
-//            log.info("rowKey-------------------->{"+rowKey.toString()+"}");
+                if (System.currentTimeMillis() % SYSTEMOUT_INTERVAL == 0)
+                    log.info("INSERT DATA. StartTime=" + new Date(startTime).toString()
+                            + ", used " + (System.currentTimeMillis() - startTime)
+                            + " million seconds, pageCount=" + page.getPositionCount() + ", rowKey=" + rowKey
+                            + ", table=" + schemaName + ":" + tableName);
+                break;
+            } catch (Exception e) {
+                retry++;
+                log.error(e.getMessage()+ " with retry " + retry, e);
+                if(retry > MAX_RETRY) {
+                    throw new RuntimeException("已达到当前重试最大次数");
+                }
+                try {
+                    Thread.sleep(3000);
+                } catch (InterruptedException exception){
+                    log.error(exception.getMessage(), exception);
+                }
 
-            if (System.currentTimeMillis() % SYSTEMOUT_INTERVAL == 0)
-                log.info("INSERT DATA. StartTime=" + new Date(startTime).toString()
-                        + ", used " + (System.currentTimeMillis() - startTime)
-                        + " million seconds, pageCount=" + page.getPositionCount() + ", rowKey=" + rowKey
-                        + ", table=" + schemaName + ":" + tableName);
-
-        } catch (Exception e) {
-            log.error(e.getMessage(),e);
 //            throw new RuntimeException(e);
 //            return CompletableFuture.completedFuture(e);
+            }
         }
-
 //        log.info("allKeys:"+keyBuffer.toString());
         return NOT_BLOCKED;
     }
